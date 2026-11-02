@@ -33,12 +33,12 @@
     </div>
     <div class="side-head">
       <span>Your library</span>
-      <button class="ib small" id="addBtnSide" type="button" aria-label="Add songs from this device" data-icon="plus"></button>
+      <button class="ib small" id="addBtnSide" type="button" aria-label="New playlist or add songs" aria-haspopup="true" data-icon="plus"></button>
     </div>
     <ul class="lib-list" id="libList"></ul>
     <div class="side-foot">
-      <p>Covers you pick are saved in this browser. Export them and upload <code>covers.json</code> to your repo to see them on every device.</p>
-      <button class="pill small" id="exportBtn" type="button">Export covers</button>
+      <p>Covers and playlists are saved in this browser. Export them and upload <code>covers.json</code> to your repo to see them on every device.</p>
+      <button class="pill small" id="exportBtn" type="button">Export covers and playlists</button>
     </div>
   </nav>
   <div class="scrim" id="scrim"></div>
@@ -72,6 +72,7 @@
       <div class="actions">
         <button class="big-play" id="heroPlay" type="button" aria-label="Play" data-icon="play" disabled></button>
         <button class="ib big" id="heroShuffle" type="button" aria-label="Shuffle play" data-icon="shuffle" disabled></button>
+        <button class="ib big" id="heroMore" type="button" aria-label="Playlist options" aria-haspopup="true" data-icon="more" hidden></button>
       </div>
 
       <div class="table">
@@ -176,6 +177,18 @@
   </div>
 </dialog>
 
+<dialog class="cd nd" id="nameDialog" aria-labelledby="ndTitle">
+  <form class="nd-form" id="ndForm">
+    <h2 id="ndTitle">New playlist</h2>
+    <input id="ndInput" type="text" maxlength="80" autocomplete="off" aria-labelledby="ndTitle">
+    <div class="nd-foot">
+      <button class="pill" id="ndCancel" type="button">Cancel</button>
+      <button class="pill primary" id="ndSave" type="submit">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="pop" id="pop" role="menu" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="drop" aria-hidden="true">Drop songs to play them now</div>
 <input id="fileInput" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac" multiple hidden>
