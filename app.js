@@ -31,7 +31,8 @@
     cdAlbumRow: $('#cdAlbumRow'), cdAlbum: $('#cdAlbum'), cdAlbumName: $('#cdAlbumName'),
     cdReset: $('#cdReset'), cdRemove: $('#cdRemove'),
     addBtnSide: $('#addBtnSide'), addBtnTop: $('#addBtnTop'), fileInput: $('#fileInput'),
-    themeBtn: $('#themeBtn'), themeMenu: $('#themeMenu'), cdCancel: $('#cdCancel'), cdSave: $('#cdSave'), cdClose: $('#cdClose')
+    themeBtn: $('#themeBtn'), themeMenu: $('#themeMenu'), heroMore: $('#heroMore'), pop: $('#pop'),
+    nameDialog: $('#nameDialog'), ndForm: $('#ndForm'), ndTitle: $('#ndTitle'), ndInput: $('#ndInput'), ndCancel: $('#ndCancel'), cdCancel: $('#cdCancel'), cdSave: $('#cdSave'), cdClose: $('#cdClose')
   };
 
   /* ---------- state ---------- */
@@ -176,7 +177,18 @@
 
   const deviceIdxs = () => tracks.map((t, i) => (t.device ? i : -1)).filter((i) => i > -1);
 
+  const findPlaylist = (id) => Library.getPlaylists().find((p) => p.id === id);
+  function playlistIdxs(p) {
+    const byId = new Map(tracks.map((t, i) => [t.id, i]));
+    return p.ids.map((id) => byId.get(id)).filter((i) => i !== undefined);
+  }
+
   function viewBase() {
+    if (currentView.startsWith('pl:')) {
+      const p = findPlaylist(currentView.slice(3));
+      if (p) return playlistIdxs(p);
+      currentView = 'all';
+    }
     if (currentView === 'device') {
       const d = deviceIdxs();
       if (d.length) return d;
@@ -212,6 +224,10 @@
     frag.append(libItem('all', 'All songs', plural(tracks.length, 'song'), null));
     const dev = deviceIdxs();
     if (dev.length) frag.append(libItem('device', 'On this device', 'Added here, ' + plural(dev.length, 'song'), repTrack(dev)));
+    for (const p of Library.getPlaylists()) {
+      const idxs = playlistIdxs(p);
+      frag.append(libItem('pl:' + p.id, p.name, 'Playlist, ' + plural(idxs.length, 'song'), idxs.length ? repTrack(idxs) : null));
+    }
     for (const a of albums) frag.append(libItem('album:' + a.name, a.name, 'Album, ' + plural(a.idxs.length, 'song'), repTrack(a.idxs)));
     el.libList.replaceChildren(frag);
   }
@@ -228,11 +244,13 @@
     const base = viewBase();
     const isAll = currentView === 'all';
     const isDevice = currentView === 'device';
-    el.heroKind.textContent = isAll || isDevice ? 'Collection' : 'Album';
-    el.heroTitle.textContent = isAll ? 'All songs' : isDevice ? 'On this device' : currentView.slice(6);
+    const pl = currentView.startsWith('pl:') ? findPlaylist(currentView.slice(3)) : null;
+    el.heroKind.textContent = pl ? 'Playlist' : isAll || isDevice ? 'Collection' : 'Album';
+    el.heroTitle.textContent = pl ? pl.name : isAll ? 'All songs' : isDevice ? 'On this device' : currentView.slice(6);
+    el.heroMore.hidden = !pl;
     const total = base.reduce((sum, i) => sum + (tracks[i].duration || 0), 0);
     const parts = [];
-    if (!isAll && !isDevice) { const artist = commonArtist(base); if (artist) parts.push(artist); }
+    if (!isAll && !isDevice && !pl) { const artist = commonArtist(base); if (artist) parts.push(artist); }
     parts.push(plural(base.length, 'song'));
     if (total) parts.push(U.longDuration(total));
     el.heroMeta.textContent = parts.join(', ');
@@ -241,7 +259,7 @@
     el.heroPlay.innerHTML = here ? ICONS.pause : ICONS.play;
     el.heroPlay.setAttribute('aria-label', here ? 'Pause' : 'Play');
 
-    if (isAll) {
+    if (isAll || !base.length) {
       el.heroCover.className = 'hero-cover all-cover';
       el.heroCover.style.backgroundImage = '';
       el.heroCover.innerHTML = ICONS.tape;
@@ -261,7 +279,7 @@
     li.className = 'row' + (i === current ? ' playing' : '');
     li.dataset.i = i;
     li.dataset.n = n;
-    li.innerHTML = `<span class="c-num"><span class="num"></span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="hp" aria-hidden="true">${ICONS.play}${ICONS.pause}</span></span><span class="c-title"><span class="thumb"></span><span class="tt"><button class="row-play" type="button"></button><span class="row-artist"></span></span></span><span class="c-album"></span><span class="c-time"></span><span class="c-more"><button class="ib small edit" type="button">${ICONS.palette}</button></span>`;
+    li.innerHTML = `<span class="c-num"><span class="num"></span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="hp" aria-hidden="true">${ICONS.play}${ICONS.pause}</span></span><span class="c-title"><span class="thumb"></span><span class="tt"><button class="row-play" type="button"></button><span class="row-artist"></span></span></span><span class="c-album"></span><span class="c-time"></span><span class="c-more"><button class="ib small more" type="button" aria-haspopup="true">${ICONS.more}</button></span>`;
     li.querySelector('.num').textContent = n;
     paintCover(li.querySelector('.thumb'), t);
     const btn = li.querySelector('.row-play');
@@ -270,7 +288,7 @@
     li.querySelector('.row-artist').textContent = t.artist || 'Unknown artist';
     li.querySelector('.c-album').textContent = t.album;
     li.querySelector('.c-time').textContent = t.duration ? U.fmt(t.duration) : '';
-    li.querySelector('.edit').setAttribute('aria-label', `Change cover for ${t.title}`);
+    li.querySelector('.more').setAttribute('aria-label', `More options for ${t.title}`);
     return li;
   }
 
@@ -286,7 +304,10 @@
     el.tracks.replaceChildren(frag);
 
     if (!tracks.length) return;
-    if (!view.length) {
+    if (!view.length && !q && currentView.startsWith('pl:')) {
+      el.empty.hidden = false;
+      el.empty.innerHTML = '<strong>This playlist is empty</strong><p>Go to All songs, tap the three dots on a song, and pick this playlist.</p>';
+    } else if (!view.length) {
       el.empty.hidden = false;
       el.empty.innerHTML = '<strong>No matches</strong><p>Try a different word, or clear the search.</p>';
     } else {
@@ -525,7 +546,8 @@
     const row = e.target.closest('.row');
     if (!row) return;
     const i = Number(row.dataset.i);
-    if (e.target.closest('.edit')) { openEditor(i); return; }
+    const moreBtn = e.target.closest('.more');
+    if (moreBtn) { e.stopPropagation(); openRowMenu(i, moreBtn); return; }
     if (i === current) togglePlay(); else playFrom(i);
   });
 
@@ -564,12 +586,26 @@
 
   el.exportBtn.addEventListener('click', () => {
     const n = Library.exportCovers();
-    toast(n ? `Exported ${plural(n, 'cover')}. Upload covers.json next to index.html in your repo.` : 'No custom covers yet. Pick one with the palette button on any song.', 5000);
+    toast(n.covers || n.playlists
+      ? `Exported ${plural(n.covers, 'cover')} and ${plural(n.playlists, 'playlist')}. Upload covers.json next to index.html in your repo.`
+      : 'Nothing to export yet. Make a playlist or pick a cover first.', 5500);
   });
 
   document.addEventListener('keydown', (e) => {
     if (el.dialog.open) return;
     if (!el.themeMenu.hidden && e.key === 'Escape') { setMenuOpen(false); el.themeBtn.focus(); return; }
+    if (!el.pop.hidden) {
+      if (e.key === 'Escape') { closePop(true); return; }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const items = [...el.pop.querySelectorAll('.pop-item')];
+        const k = items.indexOf(document.activeElement);
+        const nextK = e.key === 'ArrowDown' ? (k + 1) % items.length : (k - 1 + items.length) % items.length;
+        if (items[nextK]) items[nextK].focus();
+        return;
+      }
+    }
+    if (el.nameDialog.open) return;
     const typing = e.target.closest('input[type="search"], input[type="text"], textarea');
     if (e.key === 'Escape') {
       document.body.classList.remove('stage-open', 'nav-open');
@@ -762,11 +798,147 @@
   }
 
   const pickFiles = () => el.fileInput.click();
-  el.addBtnSide.addEventListener('click', pickFiles);
+  el.addBtnSide.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openPop(el.addBtnSide, [
+      { label: 'New playlist', act: () => newPlaylist([]) },
+      { label: 'Add songs from this device', act: pickFiles }
+    ]);
+  });
   el.addBtnTop.addEventListener('click', pickFiles);
   el.fileInput.addEventListener('change', () => {
     if (el.fileInput.files.length) addFiles(el.fileInput.files);
     el.fileInput.value = '';
+  });
+
+  /* ---------- pop-up menu ---------- */
+  let popAnchor = null;
+
+  function closePop(refocus = false) {
+    if (el.pop.hidden) return;
+    el.pop.hidden = true;
+    el.pop.replaceChildren();
+    if (popAnchor) popAnchor.setAttribute('aria-expanded', 'false');
+    if (refocus && popAnchor) popAnchor.focus();
+    popAnchor = null;
+  }
+
+  function openPop(anchor, items) {
+    closePop();
+    popAnchor = anchor;
+    anchor.setAttribute('aria-expanded', 'true');
+    for (const it of items) {
+      if (it.sep) { const d = document.createElement('div'); d.className = 'pop-sep'; el.pop.append(d); continue; }
+      if (it.heading) { const d = document.createElement('div'); d.className = 'pop-label'; d.textContent = it.heading; el.pop.append(d); continue; }
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pop-item' + (it.danger ? ' danger' : '');
+      b.setAttribute('role', it.checked === undefined ? 'menuitem' : 'menuitemcheckbox');
+      if (it.checked !== undefined) b.setAttribute('aria-checked', String(it.checked));
+      b.innerHTML = `<span></span>${it.checked !== undefined ? `<span class="pop-check">${ICONS.check}</span>` : ''}`;
+      b.firstChild.textContent = it.label;
+      b.addEventListener('click', () => { closePop(); it.act(); });
+      el.pop.append(b);
+    }
+    el.pop.hidden = false;
+    const r = anchor.getBoundingClientRect();
+    const w = el.pop.offsetWidth, h = el.pop.offsetHeight;
+    let left = Math.min(r.right - w, window.innerWidth - w - 8);
+    left = Math.max(8, left);
+    let top = r.bottom + 6;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    el.pop.style.left = left + 'px';
+    el.pop.style.top = top + 'px';
+    const first = el.pop.querySelector('.pop-item');
+    if (first) first.focus({ preventScroll: true });
+  }
+
+  document.addEventListener('click', (e) => { if (!el.pop.hidden && !e.target.closest('#pop')) closePop(); });
+  el.main.addEventListener('scroll', () => closePop(), { passive: true });
+  window.addEventListener('resize', () => closePop());
+
+  /* ---------- name dialog ---------- */
+  let nameResolve = null;
+  function askName(title, initial = '') {
+    el.ndTitle.textContent = title;
+    el.ndInput.value = initial;
+    el.nameDialog.showModal();
+    el.ndInput.focus();
+    el.ndInput.select();
+    return new Promise((resolve) => { nameResolve = resolve; });
+  }
+  function finishName(value) {
+    const r = nameResolve;
+    nameResolve = null;
+    if (el.nameDialog.open) el.nameDialog.close();
+    if (r) r(value);
+  }
+  el.ndForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const v = el.ndInput.value.trim();
+    if (v) finishName(v); else el.ndInput.focus();
+  });
+  el.ndCancel.addEventListener('click', () => finishName(null));
+  el.nameDialog.addEventListener('close', () => finishName(null));
+  el.nameDialog.addEventListener('click', (e) => { if (e.target === el.nameDialog) finishName(null); });
+
+  /* ---------- playlists ---------- */
+  function savePlaylists(list) {
+    Library.savePlaylists(list);
+    renderSidebar();
+    if (currentView.startsWith('pl:')) { renderHero(); renderList(); }
+  }
+
+  async function newPlaylist(trackIds) {
+    const name = await askName('New playlist', `My playlist ${Library.getPlaylists().length + 1}`);
+    if (!name) return;
+    const p = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, ids: [...trackIds] };
+    savePlaylists([...Library.getPlaylists(), p]);
+    toast(trackIds.length ? `Made “${name}” and added the song.` : `Made “${name}”.`);
+    if (!trackIds.length) openView('pl:' + p.id);
+  }
+
+  function toggleInPlaylist(pid, trackId) {
+    let added = false, name = '';
+    const list = Library.getPlaylists().map((p) => {
+      if (p.id !== pid) return p;
+      name = p.name;
+      added = !p.ids.includes(trackId);
+      return { ...p, ids: added ? [...p.ids, trackId] : p.ids.filter((x) => x !== trackId) };
+    });
+    savePlaylists(list);
+    toast(added ? `Added to “${name}”.` : `Removed from “${name}”.`);
+  }
+
+  function openRowMenu(i, anchor) {
+    const t = tracks[i];
+    const items = [{ heading: 'Add to playlist' }];
+    for (const p of Library.getPlaylists()) {
+      items.push({ label: p.name, checked: p.ids.includes(t.id), act: () => toggleInPlaylist(p.id, t.id) });
+    }
+    items.push({ label: 'New playlist…', act: () => newPlaylist([t.id]) });
+    items.push({ sep: true });
+    items.push({ label: 'Change cover', act: () => openEditor(i) });
+    if (t.device) items.push({ label: 'Remove from this device', danger: true, act: () => removeDeviceTrack(i) });
+    openPop(anchor, items);
+  }
+
+  el.heroMore.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const p = currentView.startsWith('pl:') ? findPlaylist(currentView.slice(3)) : null;
+    if (!p) return;
+    openPop(el.heroMore, [
+      { label: 'Rename playlist', act: async () => {
+        const name = await askName('Rename playlist', p.name);
+        if (name) savePlaylists(Library.getPlaylists().map((x) => (x.id === p.id ? { ...x, name } : x)));
+      } },
+      { label: 'Delete playlist', danger: true, act: () => {
+        if (!window.confirm(`Delete “${p.name}”? The songs stay in your library.`)) return;
+        savePlaylists(Library.getPlaylists().filter((x) => x.id !== p.id));
+        openView('all');
+        toast(`Deleted “${p.name}”.`);
+      } }
+    ]);
   });
 
   /* ---------- drop songs to add them ---------- */
