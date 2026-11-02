@@ -522,11 +522,33 @@
     syncHeroPlay();
   });
   audio.addEventListener('ended', () => next(true));
-  audio.addEventListener('error', () => {
+  /* When a song fails, find out why and say so, instead of skipping through everything */
+  let failStreak = 0;
+  audio.addEventListener('playing', () => { failStreak = 0; });
+  audio.addEventListener('error', async () => {
     if (!audio.getAttribute('src')) return;
-    const t = tracks[current];
-    toast(`Couldn’t play “${t ? t.title : 'this song'}”. Skipping.`);
-    setTimeout(() => next(true), 800);
+    const failed = current;
+    const t = tracks[failed];
+    if (!t) return;
+    let why = 'your browser couldn’t read the file. It may not really be an MP3';
+    if (!t.device) {
+      try {
+        const res = await fetch(t.src, { method: 'HEAD', cache: 'no-store' });
+        if (res.status === 404) why = 'GitHub hasn’t published it to your site yet';
+        else if (!res.ok) why = `your site answered with error ${res.status}`;
+      } catch {
+        why = 'your site couldn’t be reached';
+      }
+    }
+    if (current !== failed) return;
+    failStreak++;
+    if (failStreak >= 3) {
+      failStreak = 0;
+      toast(`Several songs in a row couldn’t play. “${t.title}” failed because ${why}.`, 8000);
+      return;
+    }
+    toast(`Couldn’t play “${t.title}” because ${why}. Skipping.`, 5000);
+    setTimeout(() => { if (current === failed) next(true); }, 1500);
   });
 
   /* ---------- controls ---------- */
