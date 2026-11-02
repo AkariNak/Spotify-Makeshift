@@ -145,6 +145,10 @@
      Covers picked in the browser are kept locally and win over the repo file. */
   let repoCovers = {};
   let localCovers = store.get('covers', {});
+  let repoPlaylists = [];
+  let localPlaylists = store.get('playlists', null);
+
+  const validPlaylist = (p) => p && typeof p.id === 'string' && typeof p.name === 'string' && Array.isArray(p.ids);
 
   function valid(c) {
     if (!c || (c.type !== 'solid' && c.type !== 'gradient') || !Array.isArray(c.colors)) return false;
@@ -157,9 +161,10 @@
       const res = await fetch('covers.json', { cache: 'no-cache' });
       if (!res.ok) return;
       const data = await res.json();
-      if (data && typeof data === 'object') {
-        for (const [k, v] of Object.entries(data)) if (valid(v)) repoCovers[k] = v;
-      }
+      if (!data || typeof data !== 'object') return;
+      const covers = data.covers && typeof data.covers === 'object' ? data.covers : data;
+      for (const [k, v] of Object.entries(covers)) if (valid(v)) repoCovers[k] = v;
+      if (Array.isArray(data.playlists)) repoPlaylists = data.playlists.filter(validPlaylist);
     } catch { /* no covers file yet */ }
   }
 
@@ -183,9 +188,15 @@
     return out;
   }
 
+  /* Playlists: saved in this browser; exported into covers.json with the covers */
+  function getPlaylists() { return localPlaylists || repoPlaylists; }
+  function savePlaylists(list) { localPlaylists = list; store.set('playlists', list); }
+
   function exportCovers() {
     const covers = allCovers();
-    const blob = new Blob([JSON.stringify(covers, null, 2) + '\n'], { type: 'application/json' });
+    const shareable = (id) => !id.startsWith('local:') && !id.startsWith('device:');
+    const playlists = getPlaylists().map((p) => ({ id: p.id, name: p.name, ids: p.ids.filter(shareable) }));
+    const blob = new Blob([JSON.stringify({ covers, playlists }, null, 2) + '\n'], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'covers.json';
@@ -193,7 +204,7 @@
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    return Object.keys(covers).length;
+    return { covers: Object.keys(covers).length, playlists: playlists.length };
   }
 
   /* ---------- songs added on this device ----------
@@ -248,5 +259,5 @@
     try { await withStore('readwrite', (st) => { st.delete(id); return null; }); } catch { /* already gone */ }
   }
 
-  SB.Library = { findSongs, buildTracks, trackFromFile, isAudioFile, enrich, loadCovers, coverFor, setCover, exportCovers, loadDeviceTracks, saveDeviceFiles, removeDeviceTrack };
+  SB.Library = { findSongs, buildTracks, trackFromFile, isAudioFile, enrich, loadCovers, coverFor, setCover, exportCovers, loadDeviceTracks, saveDeviceFiles, removeDeviceTrack, getPlaylists, savePlaylists };
 })();
