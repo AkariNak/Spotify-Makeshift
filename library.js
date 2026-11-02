@@ -177,7 +177,7 @@
   function allCovers() {
     const out = { ...repoCovers };
     for (const [k, v] of Object.entries(localCovers)) {
-      if (k.startsWith('local:')) continue;
+      if (k.startsWith('local:') || k.startsWith('device:')) continue;
       if (valid(v)) out[k] = v; else delete out[k];
     }
     return out;
@@ -196,5 +196,57 @@
     return Object.keys(covers).length;
   }
 
-  SB.Library = { findSongs, buildTracks, trackFromFile, isAudioFile, enrich, loadCovers, coverFor, setCover, exportCovers };
+  /* ---------- songs added on this device ----------
+     Kept in the browser's own storage (IndexedDB), so they stay
+     after a refresh on that phone or computer. */
+  const DB_NAME = 'sideb', STORE = 'files';
+  function openDb() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) return reject(new Error('no storage'));
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id' });
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function withStore(mode, fn) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, mode);
+      const req = fn(tx.objectStore(STORE));
+      tx.oncomplete = () => resolve(req ? req.result : undefined);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  }
+  function trackFromRecord(r) {
+    const { artist, title } = U.parseName(r.name);
+    return { id: r.id, src: URL.createObjectURL(r.blob), file: r.blob, title, artist, album: '', art: '', artLevel: 0, duration: 0, device: true };
+  }
+  async function loadDeviceTracks() {
+    try {
+      const recs = (await withStore('readonly', (st) => st.getAll())) || [];
+      return recs.sort((a, b) => a.added - b.added).map(trackFromRecord);
+    } catch { return []; }
+  }
+  async function saveDeviceFiles(files) {
+    const recs = files.map((f, k) => ({
+      id: 'device:' + Date.now().toString(36) + k + Math.random().toString(36).slice(2, 7),
+      name: f.name,
+      added: Date.now() + k,
+      blob: new Blob([f], { type: f.type || 'audio/mpeg' })
+    }));
+    try {
+      await withStore('readwrite', (st) => { recs.forEach((r) => st.put(r)); return null; });
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+      return { tracks: recs.map(trackFromRecord), saved: true };
+    } catch {
+      return { tracks: recs.map(trackFromRecord), saved: false };
+    }
+  }
+  async function removeDeviceTrack(id) {
+    try { await withStore('readwrite', (st) => { st.delete(id); return null; }); } catch { /* already gone */ }
+  }
+
+  SB.Library = { findSongs, buildTracks, trackFromFile, isAudioFile, enrich, loadCovers, coverFor, setCover, exportCovers, loadDeviceTracks, saveDeviceFiles, removeDeviceTrack };
 })();
