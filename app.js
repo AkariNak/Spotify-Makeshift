@@ -29,7 +29,9 @@
     dialog: $('#coverDialog'), cdTitle: $('#cdTitle'), cdPreview: $('#cdPreview'), cdStops: $('#cdStops'),
     cdAngleRow: $('#cdAngleRow'), cdAngle: $('#cdAngle'), cdAngleVal: $('#cdAngleVal'),
     cdAlbumRow: $('#cdAlbumRow'), cdAlbum: $('#cdAlbum'), cdAlbumName: $('#cdAlbumName'),
-    cdReset: $('#cdReset'), cdCancel: $('#cdCancel'), cdSave: $('#cdSave'), cdClose: $('#cdClose')
+    cdReset: $('#cdReset'), cdRemove: $('#cdRemove'),
+    addBtnSide: $('#addBtnSide'), addBtnTop: $('#addBtnTop'), fileInput: $('#fileInput'),
+    themeBtn: $('#themeBtn'), themeMenu: $('#themeMenu'), cdCancel: $('#cdCancel'), cdSave: $('#cdSave'), cdClose: $('#cdClose')
   };
 
   /* ---------- state ---------- */
@@ -58,6 +60,61 @@
     clearTimeout(toast.t);
     toast.t = setTimeout(() => el.toast.classList.remove('show'), ms);
   }
+
+  /* ---------- themes ---------- */
+  const THEMES = [
+    { id: 'default', name: 'Side B', swatch: 'linear-gradient(135deg, #8B6CFF, #2A2140)', meta: '#0F0D16' },
+    { id: 'tube', name: 'Tube Glow', swatch: 'radial-gradient(circle at 40% 35%, #FFD9A0, #FFA94D 55%, #5A2E10)', meta: '#140D08' },
+    { id: 'boombox', name: 'Boombox Wall', swatch: 'linear-gradient(180deg, #E1E3E7, #A2A7AF 55%, #E2382F 56%)', meta: '#101114' },
+    { id: 'dust', name: 'Dust and Static', swatch: 'radial-gradient(circle at 38% 32%, #FFF8EA, #D9C9A6 60%, #6B5A40)', meta: '#1C1815' }
+  ];
+
+  function applyTheme(id) {
+    const theme = THEMES.find((t) => t.id === id) || THEMES[0];
+    if (theme.id === 'default') delete document.body.dataset.theme;
+    else document.body.dataset.theme = theme.id;
+    store.set('theme', theme.id);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme.meta);
+    el.themeMenu.querySelectorAll('.theme-item').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.theme === theme.id)));
+  }
+
+  function buildThemeMenu() {
+    const label = document.createElement('div');
+    label.className = 'theme-label';
+    label.textContent = 'Theme';
+    el.themeMenu.append(label);
+    for (const t of THEMES) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'theme-item';
+      b.setAttribute('role', 'menuitemradio');
+      b.dataset.theme = t.id;
+      b.innerHTML = `<span class="theme-sw"></span><span></span><span class="theme-check">${ICONS.check}</span>`;
+      b.querySelector('.theme-sw').style.background = t.swatch;
+      b.children[1].textContent = t.name;
+      el.themeMenu.append(b);
+    }
+  }
+
+  function setMenuOpen(open) {
+    el.themeMenu.hidden = !open;
+    el.themeBtn.setAttribute('aria-expanded', String(open));
+    if (open) { const on = el.themeMenu.querySelector('[aria-checked="true"]'); if (on) on.focus(); }
+  }
+
+  buildThemeMenu();
+  applyTheme(store.get('theme', 'default'));
+  el.themeBtn.addEventListener('click', (e) => { e.stopPropagation(); setMenuOpen(el.themeMenu.hidden); });
+  el.themeMenu.addEventListener('click', (e) => {
+    const b = e.target.closest('.theme-item');
+    if (!b) return;
+    applyTheme(b.dataset.theme);
+    if (current > -1) setPlayingAccent(tracks[current]);
+    setMenuOpen(false);
+    el.themeBtn.focus();
+  });
+  document.addEventListener('click', (e) => { if (!el.themeMenu.hidden && !e.target.closest('.theme-pick')) setMenuOpen(false); });
 
   /* ---------- covers ---------- */
   function paintCover(node, t) {
@@ -117,7 +174,14 @@
     albums = [...map].map(([name, idxs]) => ({ name, idxs })).sort((a, b) => U.collator.compare(a.name, b.name));
   }
 
+  const deviceIdxs = () => tracks.map((t, i) => (t.device ? i : -1)).filter((i) => i > -1);
+
   function viewBase() {
+    if (currentView === 'device') {
+      const d = deviceIdxs();
+      if (d.length) return d;
+      currentView = 'all';
+    }
     if (currentView.startsWith('album:')) {
       const a = albums.find((x) => 'album:' + x.name === currentView);
       if (a) return a.idxs;
@@ -136,7 +200,7 @@
     b.innerHTML = '<span class="lib-cover"></span><span class="lib-text"><span class="lib-name"></span><span class="lib-sub"></span></span>';
     const cov = b.querySelector('.lib-cover');
     if (t) paintCover(cov, t);
-    else { cov.classList.add('all-cover'); cov.innerHTML = ICONS.note; }
+    else { cov.classList.add('all-cover'); cov.innerHTML = ICONS.tape; }
     b.querySelector('.lib-name').textContent = name;
     b.querySelector('.lib-sub').textContent = sub;
     li.append(b);
@@ -146,6 +210,8 @@
   function renderSidebar() {
     const frag = document.createDocumentFragment();
     frag.append(libItem('all', 'All songs', plural(tracks.length, 'song'), null));
+    const dev = deviceIdxs();
+    if (dev.length) frag.append(libItem('device', 'On this device', 'Added here, ' + plural(dev.length, 'song'), repTrack(dev)));
     for (const a of albums) frag.append(libItem('album:' + a.name, a.name, 'Album, ' + plural(a.idxs.length, 'song'), repTrack(a.idxs)));
     el.libList.replaceChildren(frag);
   }
@@ -161,11 +227,12 @@
   function renderHero() {
     const base = viewBase();
     const isAll = currentView === 'all';
-    el.heroKind.textContent = isAll ? 'Collection' : 'Album';
-    el.heroTitle.textContent = isAll ? 'All songs' : currentView.slice(6);
+    const isDevice = currentView === 'device';
+    el.heroKind.textContent = isAll || isDevice ? 'Collection' : 'Album';
+    el.heroTitle.textContent = isAll ? 'All songs' : isDevice ? 'On this device' : currentView.slice(6);
     const total = base.reduce((sum, i) => sum + (tracks[i].duration || 0), 0);
     const parts = [];
-    if (!isAll) { const artist = commonArtist(base); if (artist) parts.push(artist); }
+    if (!isAll && !isDevice) { const artist = commonArtist(base); if (artist) parts.push(artist); }
     parts.push(plural(base.length, 'song'));
     if (total) parts.push(U.longDuration(total));
     el.heroMeta.textContent = parts.join(', ');
@@ -177,7 +244,7 @@
     if (isAll) {
       el.heroCover.className = 'hero-cover all-cover';
       el.heroCover.style.backgroundImage = '';
-      el.heroCover.innerHTML = ICONS.note;
+      el.heroCover.innerHTML = ICONS.tape;
       setViewAccent(playingAccent);
     } else {
       el.heroCover.className = 'hero-cover';
@@ -257,7 +324,7 @@
     if (reason === 'local') extra = '<p>This page is open from your computer, so it can’t see your repo. Open your GitHub Pages link, or drop songs here to try it out.</p>';
     else if (reason === 'rate') extra = '<p>GitHub is limiting requests from this network for a bit. Refresh in a few minutes.</p>';
     else if (reason === 'github') extra = '<p>Couldn’t read your repo. If you use a custom domain, fill in <code>githubUser</code> and <code>githubRepo</code> in <code>js/config.js</code>.</p>';
-    el.empty.innerHTML = `<strong>No songs yet</strong><p>Upload audio files to the <code>${CONFIG.musicFolder}</code> folder in your GitHub repo, wait a minute, then refresh.</p>${extra}<p>You can also drop songs onto this page to play them right away.</p>`;
+    el.empty.innerHTML = `<strong>No songs yet</strong><p>Upload audio files to the <code>${CONFIG.musicFolder}</code> folder in your GitHub repo, wait a minute, then refresh.</p>${extra}<p>You can also tap the + button to add songs from this device. They stay in this browser.</p>`;
   }
 
   function openView(id) {
@@ -502,6 +569,7 @@
 
   document.addEventListener('keydown', (e) => {
     if (el.dialog.open) return;
+    if (!el.themeMenu.hidden && e.key === 'Escape') { setMenuOpen(false); el.themeBtn.focus(); return; }
     const typing = e.target.closest('input[type="search"], input[type="text"], textarea');
     if (e.key === 'Escape') {
       document.body.classList.remove('stage-open', 'nav-open');
@@ -573,6 +641,7 @@
     el.cdAlbum.checked = false;
     el.cdAlbumName.textContent = t.album ? `“${t.album}”` : '';
     el.cdReset.hidden = !c;
+    el.cdRemove.hidden = !t.device;
     el.dialog.showModal();
     wheel.set(editor.colors[0]);
     syncEditor();
@@ -628,7 +697,79 @@
   el.cdClose.addEventListener('click', () => el.dialog.close());
   el.dialog.addEventListener('click', (e) => { if (e.target === el.dialog) el.dialog.close(); });
 
-  /* ---------- drop songs to play now ---------- */
+  el.cdRemove.addEventListener('click', () => {
+    const i = editor.i;
+    el.dialog.close();
+    removeDeviceTrack(i);
+  });
+
+  function resetNow() {
+    [el.bigArt, el.stageBg, el.miniArt].forEach((n) => paintCover(n, null));
+    el.stageTitle.textContent = 'Nothing playing';
+    el.stageArtist.textContent = '';
+    el.nowTitle.textContent = 'Nothing playing';
+    el.nowArtist.textContent = 'Pick a song to start';
+    el.nowCoverBtn.hidden = true;
+    el.curTime.textContent = el.durTime.textContent = '0:00';
+    el.seekBar.value = 0;
+    setProgress(0);
+    document.title = CONFIG.siteName;
+    document.body.classList.remove('stage-open');
+  }
+
+  async function removeDeviceTrack(i) {
+    const t = tracks[i];
+    if (!t || !t.device) return;
+    await Library.removeDeviceTrack(t.id);
+    const playing = tracks[current] || null;
+    const orderT = order.map((k) => tracks[k]);
+    const baseT = baseList.map((k) => tracks[k]);
+    if (playing === t) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+      resetNow();
+    }
+    tracks.splice(i, 1);
+    URL.revokeObjectURL(t.src);
+    current = playing && playing !== t ? tracks.indexOf(playing) : -1;
+    if (current > -1) {
+      order = orderT.filter((x) => x !== t).map((x) => tracks.indexOf(x));
+      baseList = baseT.filter((x) => x !== t).map((x) => tracks.indexOf(x));
+      pos = order.indexOf(current);
+    } else {
+      order = []; baseList = []; pos = -1;
+    }
+    computeAlbums();
+    renderAll();
+    toast(`Removed “${t.title}” from this device.`);
+  }
+
+  /* ---------- add songs from this device ---------- */
+  async function addFiles(list) {
+    const files = [...list].filter(Library.isAudioFile);
+    if (!files.length) { toast('Those aren’t audio files.'); return; }
+    const { tracks: added, saved } = await Library.saveDeviceFiles(files);
+    const start = tracks.length;
+    tracks.push(...added);
+    computeAlbums();
+    renderAll();
+    Library.enrich(added, onTrackUpdate);
+    if (current < 0) playFrom(start, added.map((_, k) => start + k));
+    toast(saved
+      ? `Added ${plural(added.length, 'song')}. They’ll stay in this browser on this device.`
+      : `Added ${plural(added.length, 'song')} for now. This browser can’t save them, so they’ll be gone after a refresh.`, 5000);
+  }
+
+  const pickFiles = () => el.fileInput.click();
+  el.addBtnSide.addEventListener('click', pickFiles);
+  el.addBtnTop.addEventListener('click', pickFiles);
+  el.fileInput.addEventListener('change', () => {
+    if (el.fileInput.files.length) addFiles(el.fileInput.files);
+    el.fileInput.value = '';
+  });
+
+  /* ---------- drop songs to add them ---------- */
   let dragDepth = 0;
   const hasFiles = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
   document.addEventListener('dragenter', (e) => { if (!hasFiles(e)) return; dragDepth++; document.body.classList.add('dragging'); });
@@ -639,17 +780,7 @@
     e.preventDefault();
     dragDepth = 0;
     document.body.classList.remove('dragging');
-    const files = [...e.dataTransfer.files].filter(Library.isAudioFile);
-    if (!files.length) { toast('Those aren’t audio files.'); return; }
-    const added = files.map(Library.trackFromFile);
-    const startIndex = tracks.length;
-    tracks.push(...added);
-    if (currentView !== 'all') currentView = 'all';
-    computeAlbums();
-    renderAll();
-    Library.enrich(added, onTrackUpdate);
-    if (current < 0) playFrom(startIndex);
-    toast(`Added ${plural(added.length, 'song')} for now. Upload to your music folder to keep them.`, 4500);
+    addFiles(e.dataTransfer.files);
   });
 
   /* ---------- start ---------- */
@@ -667,8 +798,8 @@
     setRepeat(repeat);
     setVolume(store.get('volume', 1));
 
-    const [found] = await Promise.all([Library.findSongs(), Library.loadCovers()]);
-    tracks = found.paths ? Library.buildTracks(found.paths) : [];
+    const [found, , device] = await Promise.all([Library.findSongs(), Library.loadCovers(), Library.loadDeviceTracks()]);
+    tracks = (found.paths ? Library.buildTracks(found.paths) : []).concat(device);
     computeAlbums();
     currentView = store.get('view', 'all');
     renderAll();
