@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📼</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
 <script defer src="config.js"></script>
@@ -31,7 +31,10 @@
         <span id="brandName">Side B</span>
       </div>
     </div>
-    <div class="side-head">Your library</div>
+    <div class="side-head">
+      <span>Your library</span>
+      <button class="ib small" id="addBtnSide" type="button" aria-label="Add songs from this device" data-icon="plus"></button>
+    </div>
     <ul class="lib-list" id="libList"></ul>
     <div class="side-foot">
       <p>Covers you pick are saved in this browser. Export them and upload <code>covers.json</code> to your repo to see them on every device.</p>
@@ -48,6 +51,13 @@
           <span data-icon="search"></span>
           <input id="search" type="search" placeholder="Search songs, artists, albums" aria-label="Search" autocomplete="off">
         </label>
+        <div class="topbar-right">
+          <button class="ib add-top" id="addBtnTop" type="button" aria-label="Add songs from this device" data-icon="plus"></button>
+          <div class="theme-pick">
+            <button class="ib" id="themeBtn" type="button" aria-label="Theme" aria-haspopup="true" aria-expanded="false" data-icon="sliders"></button>
+            <div class="theme-menu" id="themeMenu" role="menu" aria-label="Theme" hidden></div>
+          </div>
+        </div>
       </div>
 
       <header class="hero">
@@ -157,7 +167,10 @@
     </div>
   </div>
   <div class="cd-foot">
-    <button class="link" id="cdReset" type="button">Use original art</button>
+    <div class="cd-links">
+      <button class="link" id="cdReset" type="button">Use original art</button>
+      <button class="link" id="cdRemove" type="button">Remove song from this device</button>
+    </div>
     <button class="pill" id="cdCancel" type="button">Cancel</button>
     <button class="pill primary" id="cdSave" type="button">Save cover</button>
   </div>
@@ -165,6 +178,7 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="drop" aria-hidden="true">Drop songs to play them now</div>
+<input id="fileInput" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac" multiple hidden>
 <audio id="audio" preload="metadata"></audio>
 </body>
 </html>
