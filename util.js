@@ -159,6 +159,10 @@
     close: `<svg viewBox="0 0 24 24" ${stroke} aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>`,
     clock: `<svg viewBox="0 0 24 24" ${stroke} aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`,
     note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+    plus: `<svg viewBox="0 0 24 24" ${stroke} aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`,
+    sliders: `<svg viewBox="0 0 24 24" ${stroke} aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>`,
+    check: `<svg viewBox="0 0 24 24" ${stroke} aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>`,
+    tape: '<svg viewBox="0 0 48 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="44" height="28" rx="4"/><circle cx="15" cy="14" r="5"/><circle cx="33" cy="14" r="5"/><path d="M15 9v0M20 14h8"/><path d="M10 30l3-6h22l3 6"/></svg>',
     palette: `<svg viewBox="0 0 24 24" ${stroke} aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11.5" r=".6" fill="currentColor"/><circle cx="10" cy="7.5" r=".6" fill="currentColor"/><circle cx="14.5" cy="7.5" r=".6" fill="currentColor"/></svg>`
   };
 
