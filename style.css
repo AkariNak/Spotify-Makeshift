@@ -61,9 +61,7 @@ code { font-size: .92em; color: var(--text); }
 }
 .side-top { padding: 18px 18px 6px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 21px; letter-spacing: -.02em; }
-.reel { width: 30px; height: 20px; color: var(--accent); flex: none; }
-.reel .hub { transform-box: fill-box; transform-origin: center; }
-body.is-playing .reel .hub { animation: spin 2.4s linear infinite; }
+.logo { width: 40px; height: 26px; flex: none; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .4)); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .side-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 10px 6px 18px; color: var(--muted); font-weight: 700; font-size: 15px; }
@@ -99,13 +97,9 @@ body.is-playing .reel .hub { animation: spin 2.4s linear infinite; }
 .side-foot { padding: 14px 18px 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
 .side-foot p { margin: 0 0 10px; }
 
-.all-cover {
-  background-image:
-    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--accent) 70%, #fff) 0%, transparent 55%),
-    linear-gradient(160deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 30%, #000) 100%) !important;
-  color: #fff;
-}
-.all-cover svg { width: 52%; height: auto; color: rgba(255, 255, 255, .95); filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .25)); }
+.all-cover { background: none !important; box-shadow: none !important; overflow: visible; }
+.all-cover .tape-art { width: 100%; height: auto; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .45)); }
+.lib-cover.all-cover .tape-art { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .4)); }
 
 .scrim { display: none; }
 
