@@ -406,7 +406,7 @@
     document.title = `${t.title}${t.artist ? ' – ' + t.artist : ''}`;
     if ('mediaSession' in navigator) {
       const custom = Library.coverFor(t);
-      const logo = new URL('icon-512.png', location.href).href;
+      const logo = new URL('icon-512.png?v=reels', location.href).href;
       const src = custom ? U.coverDataUrl(custom) : t.art ? new URL(t.art, location.href).href : logo;
       navigator.mediaSession.metadata = new MediaMetadata({
         title: t.title, artist: t.artist, album: t.album,
@@ -650,6 +650,8 @@
     ms.setActionHandler('previoustrack', prev);
     ms.setActionHandler('nexttrack', () => next(false));
     try { ms.setActionHandler('seekto', (d) => { audio.currentTime = d.seekTime; }); } catch { /* unsupported */ }
+    // Show previous/next on the lock screen instead of the 10-second skip buttons
+    try { ms.setActionHandler('seekbackward', null); ms.setActionHandler('seekforward', null); } catch { /* unsupported */ }
   }
 
   /* ---------- cover editor ---------- */
