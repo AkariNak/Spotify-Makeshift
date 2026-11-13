@@ -61,7 +61,7 @@ code { font-size: .92em; color: var(--text); }
 }
 .side-top { padding: 18px 18px 6px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 21px; letter-spacing: -.02em; }
-.logo { width: 40px; height: 26px; flex: none; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .4)); }
+.logo { width: 40px; height: 21px; flex: none; color: var(--text); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .side-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 10px 6px 18px; color: var(--muted); font-weight: 700; font-size: 15px; }
