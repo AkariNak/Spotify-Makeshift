@@ -406,10 +406,11 @@
     document.title = `${t.title}${t.artist ? ' – ' + t.artist : ''}`;
     if ('mediaSession' in navigator) {
       const custom = Library.coverFor(t);
-      const src = custom ? U.coverDataUrl(custom) : t.art ? new URL(t.art, location.href).href : '';
+      const logo = new URL('icon-512.png', location.href).href;
+      const src = custom ? U.coverDataUrl(custom) : t.art ? new URL(t.art, location.href).href : logo;
       navigator.mediaSession.metadata = new MediaMetadata({
         title: t.title, artist: t.artist, album: t.album,
-        artwork: src ? [{ src, sizes: '512x512' }] : []
+        artwork: [{ src: src || logo, sizes: '512x512' }]
       });
     }
   }
