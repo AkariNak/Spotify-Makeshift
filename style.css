@@ -98,8 +98,7 @@ code { font-size: .92em; color: var(--text); }
 .side-foot p { margin: 0 0 10px; }
 
 .all-cover { background: none !important; box-shadow: none !important; overflow: visible; }
-.all-cover .tape-art { width: 100%; height: auto; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .45)); }
-.lib-cover.all-cover .tape-art { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .4)); }
+.all-cover .tape-art { width: 100%; height: auto; }
 
 .scrim { display: none; }
 
