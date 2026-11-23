@@ -119,11 +119,13 @@
 
   /* ---------- covers ---------- */
   function paintCover(node, t) {
+    node.style.color = '';
     if (!t) { node.style.backgroundImage = ''; node.textContent = ''; return; }
     const custom = Library.coverFor(t);
     if (custom) {
       node.style.backgroundImage = U.coverBackground(custom);
-      node.textContent = '';
+      node.style.color = U.coverInk(custom);
+      node.textContent = U.initials(t.title);
     } else if (t.art) {
       node.style.backgroundImage = `url("${t.art}")`;
       node.textContent = '';
@@ -407,7 +409,7 @@
     if ('mediaSession' in navigator) {
       const custom = Library.coverFor(t);
       const logo = new URL('icon-512.png?v=reels', location.href).href;
-      const src = custom ? U.coverDataUrl(custom) : t.art ? new URL(t.art, location.href).href : logo;
+      const src = custom ? U.coverDataUrl(custom, 512, U.initials(t.title)) : t.art ? new URL(t.art, location.href).href : logo;
       navigator.mediaSession.metadata = new MediaMetadata({
         title: t.title, artist: t.artist, album: t.album,
         artwork: [{ src: src || logo, sizes: '512x512' }]
@@ -523,6 +525,18 @@
     syncHeroPlay();
   });
   audio.addEventListener('ended', () => next(true));
+
+  function syncLockScreen() {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = audio.paused ? 'paused' : 'playing';
+    const d = audio.duration;
+    if (navigator.mediaSession.setPositionState && isFinite(d) && d > 0) {
+      try {
+        navigator.mediaSession.setPositionState({ duration: d, playbackRate: audio.playbackRate || 1, position: Math.min(audio.currentTime, d) });
+      } catch { /* ignore */ }
+    }
+  }
+  ['play', 'pause', 'seeked', 'loadedmetadata', 'ratechange'].forEach((ev) => audio.addEventListener(ev, syncLockScreen));
   /* When a song fails, find out why and say so, instead of skipping through everything */
   let failStreak = 0;
   audio.addEventListener('playing', () => { failStreak = 0; });
@@ -645,8 +659,9 @@
 
   if ('mediaSession' in navigator) {
     const ms = navigator.mediaSession;
-    ms.setActionHandler('play', () => audio.play());
+    ms.setActionHandler('play', () => { if (current < 0) togglePlay(); else audio.play().catch(() => {}); });
     ms.setActionHandler('pause', () => audio.pause());
+    try { ms.setActionHandler('stop', () => { audio.pause(); audio.currentTime = 0; }); } catch { /* unsupported */ }
     ms.setActionHandler('previoustrack', prev);
     ms.setActionHandler('nexttrack', () => next(false));
     try { ms.setActionHandler('seekto', (d) => { audio.currentTime = d.seekTime; }); } catch { /* unsupported */ }
@@ -679,6 +694,8 @@
     el.cdAngle.style.setProperty('--p', (editor.angle / 360) * 100 + '%');
     el.cdAngleVal.textContent = editor.angle + '°';
     el.cdPreview.style.backgroundImage = U.coverBackground(draft());
+    el.cdPreview.style.color = U.coverInk(draft());
+    el.cdPreview.textContent = tracks[editor.i] ? U.initials(tracks[editor.i].title) : '';
   }
 
   function openEditor(i) {
