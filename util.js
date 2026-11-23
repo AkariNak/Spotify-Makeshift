@@ -120,8 +120,18 @@
     return `linear-gradient(${c.colors[0]}, ${c.colors[0]})`;
   }
 
-  /* Draws a custom cover to a PNG (used for lock screen artwork) */
-  function coverDataUrl(c, size = 512) {
+  /* Text color that reads well on a custom cover */
+  function coverInk(c) {
+    const cols = (c.type === 'gradient' ? c.colors.slice(0, 2) : [c.colors[0]]).map(hexToRgb).filter(Boolean);
+    const lum = cols.reduce((sum, [r, g, b]) => {
+      const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      return sum + 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    }, 0) / (cols.length || 1);
+    return lum > 0.45 ? '#16141F' : '#FFFFFF';
+  }
+
+  /* Draws a custom cover, with the song's letters, to a PNG (used for lock screen artwork) */
+  function coverDataUrl(c, size = 512, text = '') {
     try {
       const cv = document.createElement('canvas');
       cv.width = cv.height = size;
@@ -138,6 +148,14 @@
         x.fillStyle = c.colors[0];
       }
       x.fillRect(0, 0, size, size);
+      if (text) {
+        x.fillStyle = coverInk(c);
+        x.globalAlpha = 0.92;
+        x.font = `800 ${Math.round(size * 0.34)}px Figtree, system-ui, -apple-system, sans-serif`;
+        x.textAlign = 'center';
+        x.textBaseline = 'middle';
+        x.fillText(text, size / 2, size / 2 + size * 0.02);
+      }
       return cv.toDataURL('image/png');
     } catch { return ''; }
   }
@@ -172,6 +190,6 @@
   SB.U = {
     clamp, fmt, longDuration, stripExt, fileOf, dirOf, encodePath, hueOf, initials, collator, parseName,
     hexToRgb, rgbToHex, hsvToRgb, rgbToHsv, rgbToHsl, hslToHex,
-    accentFromColors, accentFromImage, coverBackground, coverDataUrl
+    accentFromColors, accentFromImage, coverBackground, coverDataUrl, coverInk
   };
 })();
