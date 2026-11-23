@@ -430,7 +430,7 @@ body.stage-open .stage { transform: none; visibility: visible; transition: trans
 .cd-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 16px 0 22px; }
 .cd-head h2 { margin: 0; font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cd-body { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 24px; padding: 20px 22px; }
-.cd-preview { width: 100%; aspect-ratio: 1; border-radius: 8px; box-shadow: 0 14px 40px rgba(0, 0, 0, .45); background: var(--raise-2) center / cover no-repeat; }
+.cd-preview { width: 100%; aspect-ratio: 1; border-radius: 8px; box-shadow: 0 14px 40px rgba(0, 0, 0, .45); background: var(--raise-2) center / cover no-repeat; display: grid; place-items: center; font-weight: 800; font-size: 56px; letter-spacing: -.03em; }
 .cd-controls { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; min-width: 0; }
 .seg { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--raise); }
 .seg button { padding: 7px 16px; border: 0; border-radius: 999px; background: none; color: var(--muted); font-weight: 600; cursor: pointer; }
